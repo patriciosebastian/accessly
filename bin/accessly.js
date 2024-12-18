@@ -2,7 +2,7 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { auditHTML } from '../lib/engine.js';
+import { annotateHTML, auditHTML } from "../lib/engine.js";
 
 const program = new Command();
 
@@ -29,11 +29,16 @@ program
   .action(async (file) => {
     const results = await auditHTML(file);
     if (results.length) {
-      // Inline annotations logic (to be implemented)
-      console.log(chalk.blue('Annotated HTML (logic pending):'));
+      const annotatedHTML = await annotateHTML(file, results);
+      console.log(chalk.blue("Annotated HTML saved:"));
+      console.log(annotatedHTML);
+
+      // Optionally save to file
+      await fs.writeFile(file, annotatedHTML, "utf8");
+      console.log(chalk.green(`Annotations written to ${file}`));
     } else {
       console.log(chalk.green('No accessibility issues to annotate!'));
     }
   });
 
-program.parse(process.argv);
+program.parse(process.argv); // ?
