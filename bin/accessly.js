@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import { annotateHTML, auditHTML } from "../lib/engine.js";
+import fs from 'fs/promises'
+import { Command } from 'commander'
+import chalk from 'chalk'
+import { annotateHTML, auditHTML } from "../lib/engine.js"
 
 const program = new Command();
 
@@ -31,7 +32,7 @@ program
     if (results.length) {
       const annotatedHTML = await annotateHTML(file, results);
       console.log(chalk.blue("Annotated HTML saved:"));
-      console.log(annotatedHTML);
+      // console.log(annotatedHTML);
 
       // Optionally save to file
       await fs.writeFile(file, annotatedHTML, "utf8");

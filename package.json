@@ -1,6 +1,6 @@
 {
   "name": "accessly-cli",
-  "version": "1.0.0-dev",
+  "version": "1.2.0-dev",
   "main": "index.js",
   "type": "module",
   "bin": {
@@ -14,6 +14,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "accessly-cli": "^1.0.4-dev",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "htmlparser2": "^9.1.0",
