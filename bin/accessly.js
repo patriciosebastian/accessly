@@ -36,6 +36,7 @@ program
       console.log(chalk.green('Configuration is valid.'));
     } catch (error) {
       console.error(`${chalk.red('Configuration validation failed:')} ${error.message}`);
+      console.log(chalk.yellow('Tip: Check the schema or re-run `accessly init` to fix issues.'));
       process.exit(1);
     }
   });
@@ -44,10 +45,24 @@ program
   .command('audit <file>')
   .description('Audit an HTML file for accessibility issues')
   .action(async (file) => {
-    const results = await auditHTML(file);
+    const config = await loadConfig();
+    
+    if (!config) {
+      console.log(chalk.red('No configuration file found. Using defaults.'));
+    } else {
+      validateConfig(config);
+    }
+
+    const results = await auditHTML(file, config); // Pass config to auditHTML if it supports config
     if (results.length) {
-      console.log(chalk.red('Accessibility issues found:'));
-      results.forEach(issue => console.log(`- Line ${issue.line}: ${issue.message}`));
+      if (config && config.ciMode) {
+        // Minimal output for CI
+        results.forEach(issue => console.log(`line=${issue.line},message=${issue.message}`));
+        process.exit(1); // maybe exit with non-zero code on issues
+      } else {
+        console.log(chalk.red('Accessibility issues found:'));
+        results.forEach(issue => console.log(`- Line ${issue.line}: ${issue.message}`));
+      }
     } else {
       console.log(chalk.green('No accessibility issues found!'));
     }
