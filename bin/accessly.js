@@ -6,6 +6,7 @@ import chalk from 'chalk'
 import { annotateHTML, auditHTML } from "../lib/engine.js"
 import { loadConfig, validateConfig } from '../lib/config.js'
 import { initCommand } from '../lib/init.js'
+import { setLogLevel, logError, logDefault, logVerbose } from '../lib/logger.js'
 
 const program = new Command();
 
@@ -18,6 +19,11 @@ program
   .command('init')
   .description('Initialize Accessly configuration')
   .option('-f, --force', 'Overwrite existing configuration without prompting')
+  .option('--environment <env>')
+  .option('--api-endpoint <url>')
+  .option('--log-level <level>')
+  .option('--report-format <format>')
+  .option('--ci-mode', 'Enable CI mode')
   .action(async (opts) => {
     await initCommand(opts);
   });
@@ -29,13 +35,16 @@ program
     try {
       const config = await loadConfig();
       if (!config) {
-        console.log(chalk.red('No configuration file found.'));
+        logError(chalk.red('No configuration file found Try running `accessly init` first.'));
         process.exit(1);
       }
       validateConfig(config);
-      console.log(chalk.green('Configuration is valid.'));
+      setLogLevel(config.logLevel);
+      logDefault(chalk.green('Configuration is valid.'));
+      logVerbose(chalk.green(`Loaded configuration: ${JSON.stringify(config, null, 2)}`));
     } catch (error) {
-      console.error(`${chalk.red('Configuration validation failed:')} ${error.message}`);
+      logError(chalk.red(`Configuration validation failed: ${error.message}`));
+      logVerbose(chalk.red('Detailed error:', error));
       console.log(chalk.yellow('Tip: Check the schema or re-run `accessly init` to fix issues.'));
       process.exit(1);
     }
@@ -46,25 +55,35 @@ program
   .description('Audit an HTML file for accessibility issues')
   .action(async (file) => {
     const config = await loadConfig();
-    
-    if (!config) {
-      console.log(chalk.red('No configuration file found. Using defaults.'));
+
+    if (config) {
+      try {
+        validateConfig(config);
+        setLogLevel(config.logLevel);
+        logVerbose(chalk.blue(`Loaded configuration: ${JSON.stringify(config, null, 2)}`));
+      } catch (error) {
+        logError(chalk.red(`Configuration validation failed: ${error.message}`));
+        process.exit(1);
+      }
     } else {
-      validateConfig(config);
+      logError(chalk.red('No configuration file found. Using defaults.'));
+      setLogLevel('default');
     }
 
-    const results = await auditHTML(file, config); // Pass config to auditHTML if it supports config
+    logVerbose(chalk.blue(`Starting audit for file: ${file}`));
+    const results = await auditHTML(file, config);
+    logVerbose(chalk.blue(`Audit results: ${JSON.stringify(results, null, 2)}`));
+
     if (results.length) {
       if (config && config.ciMode) {
-        // Minimal output for CI
-        results.forEach(issue => console.log(`line=${issue.line},message=${issue.message}`));
-        process.exit(1); // maybe exit with non-zero code on issues
+        results.forEach(issue => logError(`line=${issue.line},message=${issue.message}`));
+        process.exit(1);
       } else {
-        console.log(chalk.red('Accessibility issues found:'));
+        logDefault(chalk.red('Accessibility issues found:'));
         results.forEach(issue => console.log(`- Line ${issue.line}: ${issue.message}`));
       }
     } else {
-      console.log(chalk.green('No accessibility issues found!'));
+      logDefault(chalk.green('No accessibility issues found!'));
     }
   });
 
@@ -72,14 +91,33 @@ program
   .command('annotate <file>')
   .description('Add annotations for accessibility issues directly into the file')
   .action(async (file) => {
-    const results = await auditHTML(file);
+    const config = await loadConfig();
+
+    if (config) {
+      try {
+        validateConfig(config);
+        setLogLevel(config.logLevel);
+        logVerbose(chalk.blue(`Loaded configuration: ${JSON.stringify(config, null, 2)}`));
+      } catch (error) {
+        logError(chalk.red(`Configuration validation failed: ${error.message}`));
+        process.exit(1);
+      }
+    } else {
+      setLogLevel('default');
+      logError(chalk.red('No configuration file found. Using defaults.'));
+    }
+
+    logVerbose(chalk.blue(`Starting audit for file: ${file}`));
+    const results = await auditHTML(file, config);
+    logVerbose(chalk.blue(`Audit results: ${JSON.stringify(results, null, 2)}`));
+
     if (results.length) {
       const annotatedHTML = await annotateHTML(file, results);
-
-      await fs.writeFile(file, annotatedHTML, "utf8");
-      console.log(chalk.green(`Annotations written to ${file}`));
+      await fs.writeFile(file, annotatedHTML, 'utf8');
+      logDefault(chalk.green(`Annotations written to ${file}`));
+      logVerbose(chalk.blue(`Annotated file saved at: ${file}`));
     } else {
-      console.log(chalk.green('No accessibility issues to annotate!'));
+      logDefault(chalk.green('No accessibility issues to annotate!'));
     }
   });
 
