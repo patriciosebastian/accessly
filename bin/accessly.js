@@ -22,6 +22,7 @@ program
   .option('--environment <env>')
   .option('--api-endpoint <url>')
   .option('--log-level <level>')
+  .option('--report-level <level>', 'Set the report level (verbose, default, quiet)')
   .option('--report-format <format>')
   .option('--ci-mode', 'Enable CI mode')
   .action(async (opts) => {
@@ -35,16 +36,16 @@ program
     try {
       const config = await loadConfig();
       if (!config) {
-        logError(chalk.red('No configuration file found Try running `accessly init` first.'));
+        logError('No configuration file found Try running `accessly init` first.');
         process.exit(1);
       }
       validateConfig(config);
       setLogLevel(config.logLevel);
-      logDefault(chalk.green('Configuration is valid.'));
-      logVerbose(chalk.green(`Loaded configuration: ${JSON.stringify(config, null, 2)}`));
+      logDefault('Configuration is valid.');
+      logVerbose(`Loaded configuration: ${JSON.stringify(config, null, 2)}`);
     } catch (error) {
-      logError(chalk.red(`Configuration validation failed: ${error.message}`));
-      logVerbose(chalk.red('Detailed error:', error));
+      logError(`Configuration validation failed: ${error.message}`);
+      logVerbose('Detailed error:', error);
       console.log(chalk.yellow('Tip: Check the schema or re-run `accessly init` to fix issues.'));
       process.exit(1);
     }
@@ -54,36 +55,43 @@ program
   .command('audit <file>')
   .description('Audit an HTML file for accessibility issues')
   .action(async (file) => {
-    const config = await loadConfig();
-
-    if (config) {
-      try {
+    try {
+      const config = await loadConfig();
+      
+      if (config) {
         validateConfig(config);
         setLogLevel(config.logLevel);
-        logVerbose(chalk.blue(`Loaded configuration: ${JSON.stringify(config, null, 2)}`));
-      } catch (error) {
-        logError(chalk.red(`Configuration validation failed: ${error.message}`));
-        process.exit(1);
-      }
-    } else {
-      logError(chalk.red('No configuration file found. Using defaults.'));
-      setLogLevel('default');
-    }
-
-    logVerbose(chalk.blue(`Starting audit for file: ${file}`));
-    const results = await auditHTML(file, config);
-    logVerbose(chalk.blue(`Audit results: ${JSON.stringify(results, null, 2)}`));
-
-    if (results.length) {
-      if (config && config.ciMode) {
-        results.forEach(issue => logError(`line=${issue.line},message=${issue.message}`));
-        process.exit(1);
+        logVerbose(`Loaded configuration: ${JSON.stringify(config, null, 2)}`);
       } else {
-        logDefault(chalk.red('Accessibility issues found:'));
-        results.forEach(issue => console.log(`- Line ${issue.line}: ${issue.message}`));
+        logError('No configuration found. Using defaults.');
+        setLogLevel('default');
       }
-    } else {
-      logDefault(chalk.green('No accessibility issues found!'));
+
+      logVerbose(`Starting audit for file: ${file}`);
+      const results = await auditHTML(file, config);
+      logVerbose(`Audit results: ${JSON.stringify(results, null, 2)}`);
+
+      if (results.length) {
+        if (config && config.ciMode) {
+          results.forEach(issue => logError(`line=${issue.line},message=${issue.message}`));
+          process.exit(1);
+        } else {
+          logDefault('Accessibility issues found:');
+          results.forEach(issue => {
+            if (config.reportLevel === 'verbose') {
+              console.log(`- Line ${issue.line}: ${issue.message} (See: ${issue.docs})`);
+            } else {
+              console.log(`- Line ${issue.line}: ${issue.message}`);
+            }
+          });
+        }
+      } else {
+        logDefault('No accessibility issues found!');
+      }
+    } catch (error) {
+      logError(`Audit failed: ${error.message}`);
+      logVerbose(`Detailed error: ${error.stack}`);
+      process.exit(1);
     }
   });
 
@@ -91,33 +99,33 @@ program
   .command('annotate <file>')
   .description('Add annotations for accessibility issues directly into the file')
   .action(async (file) => {
-    const config = await loadConfig();
-
-    if (config) {
-      try {
+    try {
+      const config = await loadConfig();
+      if (config) {
         validateConfig(config);
         setLogLevel(config.logLevel);
-        logVerbose(chalk.blue(`Loaded configuration: ${JSON.stringify(config, null, 2)}`));
-      } catch (error) {
-        logError(chalk.red(`Configuration validation failed: ${error.message}`));
-        process.exit(1);
+        logVerbose(`Loaded configuration: ${JSON.stringify(config, null, 2)}`);
+      } else {
+        setLogLevel('default');
+        logError('No configuration found. Using defaults.');
       }
-    } else {
-      setLogLevel('default');
-      logError(chalk.red('No configuration file found. Using defaults.'));
-    }
 
-    logVerbose(chalk.blue(`Starting audit for file: ${file}`));
-    const results = await auditHTML(file, config);
-    logVerbose(chalk.blue(`Audit results: ${JSON.stringify(results, null, 2)}`));
+      logVerbose(`Starting annotation for file: ${file}`);
+      const results = await auditHTML(file, config);
+      logVerbose(`Audit results: ${JSON.stringify(results, null, 2)}`);
 
-    if (results.length) {
-      const annotatedHTML = await annotateHTML(file, results);
-      await fs.writeFile(file, annotatedHTML, 'utf8');
-      logDefault(chalk.green(`Annotations written to ${file}`));
-      logVerbose(chalk.blue(`Annotated file saved at: ${file}`));
-    } else {
-      logDefault(chalk.green('No accessibility issues to annotate!'));
+      if (results.length) {
+        const annotatedHTML = await annotateHTML(file, results, config.reportLevel);
+        await fs.writeFile(file, annotatedHTML, "utf8");
+        logDefault(`Annotations written to ${file}`);
+        logVerbose(`Annotated file saved at: ${file}`);
+      } else {
+        logDefault('No accessibility issues to annotate!');
+      }
+    } catch (error) {
+      logError(`Annotation failed: ${error.message}`);
+      logVerbose(`Detailed error: ${error.stack}`);
+      process.exit(1);
     }
   });
 
