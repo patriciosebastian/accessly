@@ -6,7 +6,7 @@ import chalk from 'chalk'
 import { annotateHTML, auditHTML } from "../lib/engine.js"
 import { loadConfig, validateConfig } from '../lib/config.js'
 import { initCommand } from '../lib/init.js'
-import { setLogLevel, logError, logDefault, logVerbose } from '../lib/logger.js'
+import { setLogLevel, logError, logDefault, logVerbose, logWarning } from '../lib/logger.js'
 
 const program = new Command();
 
@@ -73,15 +73,31 @@ program
 
       if (results.length) {
         if (config && config.ciMode) {
-          results.forEach(issue => logError(`line=${issue.line},message=${issue.message}`));
+          results.forEach(issue => {
+            if (issue.severity === 'error') {
+              logError(`line=${issue.line},message=${issue.message}`);
+            } else if (issue.severity === 'warning') {
+              console.warn(`[WARNING] line=${issue.line},message=${issue.message}`);
+            }
+          });
           process.exit(1);
         } else {
           logDefault('Accessibility issues found:');
           results.forEach(issue => {
             if (config.reportLevel === 'verbose') {
-              console.log(`- Line ${issue.line}: ${issue.message} (See: ${issue.docs})`);
-            } else {
-              console.log(`- Line ${issue.line}: ${issue.message}`);
+              if (issue.severity === 'error') {
+                console.log(`[ERROR] - Line ${issue.line}: ${issue.message} (See: ${issue.docs})`);
+              } else if (issue.severity === 'warning') {
+                logWarning(`- Line ${issue.line}: ${issue.message} (See: ${issue.docs})`);
+              }
+            } else if (config.reportLevel === 'default') {
+              if (issue.severity === 'error') {
+                console.log(`[ERROR] - Line ${issue.line}: ${issue.message}`);
+              }
+            } else if (config.reportLevel === 'quiet') {
+              if (issue.severity === 'error') {
+                console.log(`[ERROR] - Line ${issue.line}: ${issue.message}`);
+              }
             }
           });
         }
