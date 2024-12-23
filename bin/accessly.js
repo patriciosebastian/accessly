@@ -2,7 +2,6 @@
 
 import fs from 'fs/promises'
 import { Command } from 'commander'
-import chalk from 'chalk'
 import { annotateHTML, auditHTML } from "../lib/engine.js"
 import { loadConfig, validateConfig } from '../lib/config.js'
 import { initCommand } from '../lib/init.js'
@@ -46,7 +45,7 @@ program
     } catch (error) {
       logError(`Configuration validation failed: ${error.message}`);
       logVerbose('Detailed error:', error);
-      console.log(chalk.yellow('Tip: Check the schema or re-run `accessly init` to fix issues.'));
+      logWarning('Tip: Check the schema or re-run `accessly init` to fix issues.');
       process.exit(1);
     }
   });
@@ -77,26 +76,27 @@ program
             if (issue.severity === 'error') {
               logError(`line=${issue.line},message=${issue.message}`);
             } else if (issue.severity === 'warning') {
-              console.warn(`[WARNING] line=${issue.line},message=${issue.message}`);
+              logError(`[WARNING] line=${issue.line},message=${issue.message}`);
             }
           });
           process.exit(1);
         } else {
+          // logWarning here instead?
           logDefault('Accessibility issues found:');
           results.forEach(issue => {
             if (config.reportLevel === 'verbose') {
               if (issue.severity === 'error') {
-                console.log(`[ERROR] - Line ${issue.line}: ${issue.message} (See: ${issue.docs})`);
+                logError(`- Line ${issue.line}: ${issue.message} (See: ${issue.docs})`);
               } else if (issue.severity === 'warning') {
                 logWarning(`- Line ${issue.line}: ${issue.message} (See: ${issue.docs})`);
               }
             } else if (config.reportLevel === 'default') {
               if (issue.severity === 'error') {
-                console.log(`[ERROR] - Line ${issue.line}: ${issue.message}`);
+                logError(`- Line ${issue.line}: ${issue.message}`);
               }
             } else if (config.reportLevel === 'quiet') {
               if (issue.severity === 'error') {
-                console.log(`[ERROR] - Line ${issue.line}: ${issue.message}`);
+                logError(`- Line ${issue.line}: ${issue.message}`);
               }
             }
           });
