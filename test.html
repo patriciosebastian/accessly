@@ -7,12 +7,30 @@
       color: #777; /* Light gray text */
       background-color: #aaa; /* Slightly darker gray background */
     }
+    .another-low-contrast {
+      color: #888;
+      background-color: #bbb;
+    }
+    .high-contrast {
+      color: #000;
+      background-color: #fff;
+    }
   </style>
 </head>
 <body>
   <img src="image1.jpg">
   <img src="decorative.jpg" role="presentation" alt="decorative">
   <p class="low-contrast">This text has low contrast with its background.</p>
+  <p class="another-low-contrast">Another low contrast text example.</p>
+  <div style="color: #555;">
+    <p>This text inherits color from parent and has no background color set.</p>
+  </div>
+  <div style="background-color: #eee;">
+    <p>This text inherits background color from parent and has no text color set.</p>
+  </div>
+  <div>
+    <p>This text inherits both color and background color from ancestors.</p>
+  </div>
   <p style="color: #777; background-color: #aaa;">Inline style with low contrast</p>
   <button></button>
   <a href="https://example.com"></a>
