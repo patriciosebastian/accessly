@@ -1,12 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Test Page</title>
+  <title>Accessibility Test Page</title>
+  <style>
+    .low-contrast {
+      color: #777; /* Light gray text */
+      background-color: #aaa; /* Slightly darker gray background */
+    }
+  </style>
 </head>
 <body>
+  <img src="image1.jpg">
+  <img src="decorative.jpg" role="presentation" alt="decorative">
+  <p class="low-contrast">This text has low contrast with its background.</p>
+  <p style="color: #777; background-color: #aaa;">Inline style with low contrast</p>
   <button></button>
-  <img src="example.jpg">
-  <img src="example.jpg" role="presentation">
+  <a href="https://example.com"></a>
+  <input type="text">
   <iframe src="https://example.com"></iframe>
 </body>
 </html>
